@@ -1,45 +1,69 @@
-FROM php:7.3.7-apache
+FROM php:7.4.2-apache-buster
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  autoconf \
-  build-essential \
-  apt-utils \
-  zlib1g-dev \
-  libzip-dev \
-  unzip \
-  zip \
-  libmagick++-dev \
-  libmagickwand-dev \
-  libpq-dev \
-  libfreetype6-dev \
-  libjpeg62-turbo-dev \
-  libpng-dev \
-  unixodbc \
-  unixodbc-dev \
-  freetds-dev \
-  freetds-bin \
-  tdsodbc
+RUN apt-get -y update --fix-missing && \
+    apt-get upgrade -y && \
+    apt-get --no-install-recommends install -y apt-utils && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-configure gd \
-  --with-png-dir=/usr/include/ \
-  --with-jpeg-dir=/usr/include/ \
-  --with-freetype-dir=/usr/include/
+RUN apt-get -y update && \
+    apt-get -y --no-install-recommends install nano wget \
+dialog \
+libsqlite3-dev \
+libsqlite3-0 && \
+    apt-get -y --no-install-recommends install default-mysql-client \
+zlib1g-dev \
+libzip-dev \
+libicu-dev && \
+    apt-get -y --no-install-recommends install --fix-missing apt-utils \
+build-essential \
+git \
+curl \
+libonig-dev && \ 
+    apt-get -y --no-install-recommends install --fix-missing libcurl4 \
+libcurl4-openssl-dev \
+zip \
+openssl && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-RUN docker-php-ext-configure zip --with-libzip
+RUN pecl install xdebug-2.8.0 && \
+    docker-php-ext-enable xdebug
 
-RUN docker-php-ext-configure pdo_dblib --with-libdir=/lib/x86_64-linux-gnu
+# Install redis
+RUN pecl install redis-5.1.1 && \
+    docker-php-ext-enable redis
 
-RUN docker-php-ext-configure soap --enable-soap 
+# Install imagick
+RUN apt-get update && \
+    apt-get -y --no-install-recommends install --fix-missing libmagickwand-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    pecl install imagick && \
+    docker-php-ext-enable imagick
 
-RUN docker-php-ext-install gd intl  pdo_mysql pdo_pgsql mysqli zip pdo_dblib soap
+# Other PHP7 Extensions
 
-RUN pecl install imagick-3.4.3
+RUN docker-php-ext-install pdo_mysql && \
+    docker-php-ext-install pdo_sqlite && \
+    docker-php-ext-install mysqli && \
+    docker-php-ext-install curl && \
+    docker-php-ext-install tokenizer && \
+    docker-php-ext-install json && \
+    docker-php-ext-install zip && \
+    docker-php-ext-install -j$(nproc) intl && \
+    docker-php-ext-install mbstring && \
+    docker-php-ext-install gettext && \
+    docker-php-ext-install exif
 
-RUN pecl install xdebug && docker-php-ext-enable xdebug
 
-RUN docker-php-ext-enable imagick pdo_dblib
+# Install Freetype 
+RUN apt-get -y update && \
+    apt-get --no-install-recommends install -y libfreetype6-dev \
+libjpeg62-turbo-dev \
+libpng-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg && \
+    docker-php-ext-install gd
 
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 #upload
 RUN echo "file_uploads = On\n" \
